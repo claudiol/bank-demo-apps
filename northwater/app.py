@@ -13,6 +13,7 @@ import sqlite3
 from contextlib import asynccontextmanager, contextmanager, suppress
 from datetime import date, datetime
 from pathlib import Path
+from typing import TypeGuard
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, Form, Request
@@ -849,7 +850,7 @@ def load_party(conn: sqlite3.Connection, account_id: int) -> sqlite3.Row | None:
     ).fetchone()
 
 
-def valid_pending(pending) -> bool:
+def valid_pending(pending: object) -> TypeGuard[dict]:
     if not isinstance(pending, dict):
         return False
     required = ("nonce", "kind", "scope", "from_id", "to_id", "payee", "amount_cents", "memo")
@@ -893,16 +894,17 @@ def describe_pending(conn: sqlite3.Connection, user_id: int, pending: dict) -> d
     elif pending["scope"] != "bill" or not pending["payee"]:
         raise FormError("That transfer is no longer available. Start again.")
 
-    if pending["scope"] == "own":
-        to_line = f"{dest['nickname']} · {mask_number(dest['account_number'])}"
-        headline = f"Move {format_money(amount)}"
-        confirm_label = "Move now"
-        edit_href = "/transfer"
-        eyebrow = "Review transfer"
-    elif pending["scope"] == "member":
-        to_line = f"{dest['owner_name']}, {dest['nickname']} · {dest['account_number']}"
-        headline = f"Send {format_money(amount)}"
-        confirm_label = "Send now"
+    if pending["scope"] in {"own", "member"}:
+        if dest is None:
+            raise FormError("Choose where the money should go.")
+        if pending["scope"] == "own":
+            to_line = f"{dest['nickname']} · {mask_number(dest['account_number'])}"
+            headline = f"Move {format_money(amount)}"
+            confirm_label = "Move now"
+        else:
+            to_line = f"{dest['owner_name']}, {dest['nickname']} · {dest['account_number']}"
+            headline = f"Send {format_money(amount)}"
+            confirm_label = "Send now"
         edit_href = "/transfer"
         eyebrow = "Review transfer"
     else:
@@ -994,18 +996,22 @@ def post_ledger(conn: sqlite3.Connection, user_id: int, pending: dict) -> tuple[
             (source["id"],),
         ).fetchone()["balance_cents"]
         posted_on = date.today().isoformat()
-        if scope == "bill":
-            description = payee
-            category = "bill"
-            dest_label = payee
-        elif scope == "own":
+        if scope == "own":
+            if dest is None:
+                raise FormError("Choose where the money should go.")
             description = f"Transfer to {dest['nickname']}"
             category = "internal"
             dest_label = dest["nickname"]
-        else:
+        elif scope == "member":
+            if dest is None:
+                raise FormError("Choose where the money should go.")
             description = f"Sent to {dest['owner_name']}"
             category = "transfer"
             dest_label = dest["owner_name"]
+        else:
+            description = payee
+            category = "bill"
+            dest_label = payee
 
         conn.execute(
             """
@@ -1356,12 +1362,12 @@ def account_detail(request: Request, account_id: int, flow: str = "all", q: str 
         )
         filters = []
         for key, label in (("all", "All"), ("in", "Money in"), ("out", "Money out")):
-            params = {"flow": key}
+            query_params = {"flow": key}
             if query:
-                params["q"] = query
+                query_params["q"] = query
             filters.append(
                 {
-                    "href": f"/accounts/{account_id}?{urlencode(params)}",
+                    "href": f"/accounts/{account_id}?{urlencode(query_params)}",
                     "label": label,
                     "current": flow == key,
                 }
