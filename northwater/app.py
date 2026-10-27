@@ -451,10 +451,7 @@ def assert_ledger(conn: sqlite3.Connection) -> None:
                     f"running {running}, stored {row['balance_after_cents']}"
                 )
         if running != account["balance_cents"]:
-            raise RuntimeError(
-                f"{account['nickname']} balance {account['balance_cents']} does not match the ledger {running}"
-            )
-
+            raise RuntimeError(f"{account['nickname']} balance {account['balance_cents']} does not match the ledger {running}")
 
 def seed(conn: sqlite3.Connection) -> None:
     customers = build_customers()
@@ -527,9 +524,7 @@ def init_db() -> None:
         conn.isolation_level = None
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA journal_mode = WAL")
-        has_meta = conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'meta'"
-        ).fetchone()
+        has_meta = conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'meta'").fetchone()
         version = None
         if has_meta:
             row = conn.execute("SELECT value FROM meta WHERE key = 'seed_version'").fetchone()
@@ -1124,9 +1119,7 @@ def receipt_view(conn: sqlite3.Connection, user_id: int, confirmation: str) -> d
     ).fetchone()
     if row is None:
         return None
-    allowed = user_id == row["initiator_id"] or (
-        row["to_user_id"] is not None and user_id == row["to_user_id"]
-    )
+    allowed = user_id == row["initiator_id"] or (row["to_user_id"] is not None and user_id == row["to_user_id"])
     if not allowed:
         return None
     if row["scope"] == "own":
@@ -1350,7 +1343,7 @@ def account_detail(request: Request, account_id: int, flow: str = "all", q: str 
         rows = conn.execute(
             f"""
             SELECT * FROM transactions
-            WHERE {' AND '.join(clauses)}
+            WHERE {" AND ".join(clauses)}
             ORDER BY posted_at DESC, id DESC
             """,
             params,
