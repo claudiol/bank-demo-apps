@@ -10,7 +10,7 @@ import os
 import re
 import secrets
 import sqlite3
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import asynccontextmanager, contextmanager, suppress
 from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import urlencode
@@ -190,10 +190,8 @@ def load_secret() -> str:
             return current
     value = secrets.token_hex(32)
     path.write_text(value)
-    try:
+    with suppress(OSError):
         os.chmod(path, 0o600)
-    except OSError:
-        pass
     return value
 
 

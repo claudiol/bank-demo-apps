@@ -24,8 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class BankAppTest {
-    private static final Pattern CSRF = Pattern.compile("name=\"csrf\" value=\"([^\"]+)\"");
-    private static final Pattern NONCE = Pattern.compile("name=\"nonce\" value=\"([^\"]+)\"");
+    private static final Pattern CSRF_FIELD = Pattern.compile("name=\"csrf\" value=\"([^\"]+)\"");
+    private static final Pattern NONCE_FIELD = Pattern.compile("name=\"nonce\" value=\"([^\"]+)\"");
 
     @Test
     void parsesAmounts() {
@@ -213,11 +213,11 @@ class BankAppTest {
     }
 
     private static String csrf(String html) {
-        return group(CSRF, html, "csrf token missing");
+        return group(CSRF_FIELD, html, "csrf token missing");
     }
 
     private static String nonce(String html) {
-        return group(NONCE, html, "nonce missing");
+        return group(NONCE_FIELD, html, "nonce missing");
     }
 
     private static String group(Pattern pattern, String html, String message) {

@@ -28,10 +28,10 @@ public final class SeedData {
         String today = LocalDate.now().toString();
         List<Event> averyChecking = new ArrayList<>(AVERY_CHECKING);
         List<Event> jordanChecking = new ArrayList<>(JORDAN_CHECKING);
-        if (today.compareTo("2026-07-01") >= 0) {
+        if ("2026-07-01".compareTo(today) <= 0) {
             averyChecking.add(new Event(today, "Little Peak Coffee", -475L, "dining"));
         }
-        if (today.compareTo("2026-08-01") >= 0) {
+        if ("2026-08-01".compareTo(today) <= 0) {
             jordanChecking.add(new Event(today, "Farmers market", -1_820L, "groceries"));
         }
 

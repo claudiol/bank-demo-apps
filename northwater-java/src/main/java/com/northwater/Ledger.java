@@ -1,7 +1,9 @@
 package com.northwater;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.security.spec.KeySpec;
@@ -36,8 +38,9 @@ public final class Ledger {
 
     public static Ledger open(Path database) {
         try {
-            Files.createDirectories(database.getParent() == null ? Path.of(".") : database.getParent());
-        } catch (Exception ex) {
+            Path parent = database.getParent();
+            Files.createDirectories(parent == null ? Path.of(".") : parent);
+        } catch (IOException ex) {
             throw new IllegalStateException("Could not create the ledger folder", ex);
         }
         Ledger ledger = new Ledger(database);
@@ -308,7 +311,7 @@ public final class Ledger {
                         return new Posting(existing, "This transfer was already posted.", true);
                     }
                 }
-                throw new FormException("Couldn't post that transfer. Review it again.");
+                throw new FormException("Couldn't post that transfer. Review it again.", ex);
             }
         } catch (SQLException ex) {
             throw new IllegalStateException(ex);
@@ -603,8 +606,7 @@ public final class Ledger {
                     ps.setString(5, passwordHash);
                     ps.executeUpdate();
                     try (ResultSet keys = ps.getGeneratedKeys()) {
-                        keys.next();
-                        userId = keys.getInt(1);
+                        userId = generatedKey(keys);
                     }
                 }
                 for (SeedData.Account account : customer.accounts()) {
@@ -625,8 +627,7 @@ public final class Ledger {
                         ps.setString(7, account.openedOn());
                         ps.executeUpdate();
                         try (ResultSet keys = ps.getGeneratedKeys()) {
-                            keys.next();
-                            accountId = keys.getInt(1);
+                            accountId = generatedKey(keys);
                         }
                     }
                     for (SeedData.Row row : account.rows()) {
@@ -642,11 +643,11 @@ public final class Ledger {
             }
             assertBalanced(conn);
             conn.commit();
+        } catch (RuntimeException ex) {
+            conn.rollback();
+            throw ex;
         } catch (Exception ex) {
             conn.rollback();
-            if (ex instanceof RuntimeException runtime) {
-                throw runtime;
-            }
             throw new IllegalStateException(ex);
         } finally {
             conn.setAutoCommit(true);
@@ -836,11 +837,20 @@ public final class Ledger {
         }
     }
 
+    private static int generatedKey(ResultSet keys) throws SQLException {
+        if (!keys.next()) {
+            throw new IllegalStateException("insert did not return a key");
+        }
+        return keys.getInt(1);
+    }
+
     private static long balanceOf(Connection conn, int accountId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("SELECT balance_cents FROM accounts WHERE id = ?")) {
             ps.setInt(1, accountId);
             try (ResultSet rs = ps.executeQuery()) {
-                rs.next();
+                if (!rs.next()) {
+                    throw new IllegalStateException("account disappeared");
+                }
                 return rs.getLong(1);
             }
         }
@@ -911,7 +921,7 @@ public final class Ledger {
             byte[] digest = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();
             return "pbkdf2_sha256$" + PBKDF2_ROUNDS + "$" + HexFormat.of().formatHex(salt) + "$"
                     + HexFormat.of().formatHex(digest);
-        } catch (Exception ex) {
+        } catch (GeneralSecurityException ex) {
             throw new IllegalStateException("Could not hash a password", ex);
         }
     }
@@ -931,7 +941,7 @@ public final class Ledger {
             KeySpec spec = new PBEKeySpec(password.toCharArray(), salt, rounds, expected.length * 8);
             byte[] actual = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).getEncoded();
             return MessageDigest.isEqual(actual, expected);
-        } catch (Exception ex) {
+        } catch (GeneralSecurityException | IllegalArgumentException ex) {
             return false;
         }
     }

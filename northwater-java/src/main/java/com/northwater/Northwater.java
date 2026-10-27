@@ -6,6 +6,7 @@ import java.nio.file.Path;
 public final class Northwater {
     private Northwater() {}
 
+    @SuppressWarnings({"PMD.AvoidUsingHardCodedIP", "PMD.SystemPrintln"})
     public static void main(String[] args) {
         int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
         Path database = Path.of(System.getenv().getOrDefault("NORTHWATER_DB", "data/northwater.db"));

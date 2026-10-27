@@ -9,7 +9,7 @@ import java.util.Locale;
 public final class Dates {
     private static final DateTimeFormatter STORED =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US);
-    private static final DateTimeFormatter PRETTY =
+    private static final DateTimeFormatter SHORT_DATE =
             DateTimeFormatter.ofPattern("MMM d", Locale.US);
     private static final DateTimeFormatter PRETTY_YEAR =
             DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US);
@@ -30,7 +30,7 @@ public final class Dates {
 
     public static String pretty(String iso, LocalDate today) {
         LocalDate posted = LocalDate.parse(iso.substring(0, 10));
-        DateTimeFormatter formatter = posted.getYear() == today.getYear() ? PRETTY : PRETTY_YEAR;
+        DateTimeFormatter formatter = posted.getYear() == today.getYear() ? SHORT_DATE : PRETTY_YEAR;
         return posted.format(formatter);
     }
 

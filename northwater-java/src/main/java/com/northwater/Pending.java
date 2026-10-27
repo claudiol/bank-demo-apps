@@ -4,6 +4,8 @@ import java.io.Serializable;
 
 /** A transfer the customer has reviewed but not posted yet. */
 public final class Pending implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     public final String nonce;
     public final String kind;
     public final String scope;

@@ -4,10 +4,13 @@ import java.io.Serializable;
 import java.util.List;
 
 /** Template values. Public fields are what Thymeleaf reads. */
+@SuppressWarnings("PMD.MissingStaticMethodInNonInstantiatableClass")
 public final class Views {
     private Views() {}
 
     public static final class Flash implements Serializable {
+        private static final long serialVersionUID = 1L;
+
         public final String kind;
         public final String text;
 
