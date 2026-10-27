@@ -1,3 +1,0 @@
-{% if flash %}
-<p class="flash {{ 'flash-error' if flash.kind == 'error' else 'flash-ok' }}" role="{{ 'alert' if flash.kind == 'error' else 'status' }}">{{ flash.text }}</p>
-{% endif %}
