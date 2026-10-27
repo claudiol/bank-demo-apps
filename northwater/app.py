@@ -25,7 +25,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 ROOT = Path(__file__).resolve().parent
 SEED_VERSION = "1"
-DEMO_PASSWORD = "northwater"
+DEMO_PASSWORD = "northwater"  # nosec B105
 ROUTING_NUMBER = "260000000"
 PBKDF2_ROUNDS = 100_000
 MAX_CENTS = 100_000_000
@@ -727,6 +727,38 @@ def like_pattern(query: str) -> str:
     return f"%{escaped}%"
 
 
+def statement_sql(flow: str, searching: bool) -> str:
+    """Fixed statement queries. Search text is bound, never concatenated."""
+    queries = {
+        (
+            "all",
+            False,
+        ): "SELECT * FROM transactions WHERE account_id = ? ORDER BY posted_at DESC, id DESC",
+        ("in", False): (
+            "SELECT * FROM transactions WHERE account_id = ? AND amount_cents > 0 "
+            "AND category != 'opening' ORDER BY posted_at DESC, id DESC"
+        ),
+        ("out", False): ("SELECT * FROM transactions WHERE account_id = ? AND amount_cents < 0 ORDER BY posted_at DESC, id DESC"),
+        ("all", True): (
+            "SELECT * FROM transactions WHERE account_id = ? AND "
+            "(description LIKE ? ESCAPE '\\' OR IFNULL(memo, '') LIKE ? ESCAPE '\\') "
+            "ORDER BY posted_at DESC, id DESC"
+        ),
+        ("in", True): (
+            "SELECT * FROM transactions WHERE account_id = ? AND amount_cents > 0 "
+            "AND category != 'opening' AND "
+            "(description LIKE ? ESCAPE '\\' OR IFNULL(memo, '') LIKE ? ESCAPE '\\') "
+            "ORDER BY posted_at DESC, id DESC"
+        ),
+        ("out", True): (
+            "SELECT * FROM transactions WHERE account_id = ? AND amount_cents < 0 AND "
+            "(description LIKE ? ESCAPE '\\' OR IFNULL(memo, '') LIKE ? ESCAPE '\\') "
+            "ORDER BY posted_at DESC, id DESC"
+        ),
+    }
+    return queries[(flow if flow in {"in", "out"} else "all", searching)]
+
+
 def chosen_account_id(accounts: list[sqlite3.Row], requested: str | None) -> int:
     ids = {row["id"] for row in accounts}
     if requested and requested.isdigit() and int(requested) in ids:
@@ -1337,24 +1369,11 @@ def account_detail(request: Request, account_id: int, flow: str = "all", q: str 
         query = q.strip()[:80] if isinstance(q, str) else ""
         if any(ord(ch) < 32 or ord(ch) == 127 for ch in query):
             query = ""
-        clauses = ["account_id = ?"]
         params: list = [account_id]
-        if flow == "in":
-            clauses.append("amount_cents > 0 AND category != 'opening'")
-        elif flow == "out":
-            clauses.append("amount_cents < 0")
         if query:
             pattern = like_pattern(query)
-            clauses.append("(description LIKE ? ESCAPE '\\' OR IFNULL(memo, '') LIKE ? ESCAPE '\\')")
             params.extend([pattern, pattern])
-        rows = conn.execute(
-            f"""
-            SELECT * FROM transactions
-            WHERE {" AND ".join(clauses)}
-            ORDER BY posted_at DESC, id DESC
-            """,
-            params,
-        ).fetchall()
+        rows = conn.execute(statement_sql(flow, bool(query)), params).fetchall()
         today = date.today()
         incoming, outgoing = flow_totals(
             month_rows(conn, user["id"], today, account_id),

@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 
 os.environ["NORTHWATER_DB"] = str(Path(tempfile.mkdtemp()) / "northwater.db")
-os.environ["NORTHWATER_SECRET"] = "test-secret-value"
+os.environ["NORTHWATER_SECRET"] = "test-secret-value"  # nosec B105
 
 from fastapi.testclient import TestClient
 
@@ -89,7 +89,7 @@ def main() -> None:
 
         wrong = client.post(
             "/login",
-            data={"csrf": csrf_of(login.text), "email": "avery@northwater.demo", "password": "nope"},
+            data={"csrf": csrf_of(login.text), "email": "avery@northwater.demo", "password": "nope"},  # nosec B105
             follow_redirects=False,
         )
         check(wrong.status_code == 401, "wrong password status", wrong)
