@@ -1,5 +1,8 @@
 # Northwater architecture
 
+[![Python](https://img.shields.io/github/actions/workflow/status/claudiol/bank-demo-apps/ci.yml?branch=main&job=python&label=Python)](https://github.com/claudiol/bank-demo-apps/actions/workflows/ci.yml)
+[![Java](https://img.shields.io/github/actions/workflow/status/claudiol/bank-demo-apps/ci.yml?branch=main&job=java&label=Java)](https://github.com/claudiol/bank-demo-apps/actions/workflows/ci.yml)
+
 Northwater is a fictional retail bank that runs as one program on your computer. A browser talks to that program. The program keeps customers, accounts, and a ledger in a SQLite file. Nothing is sent to a payment network, another bank, or a remote service.
 
 The same design is implemented twice:
