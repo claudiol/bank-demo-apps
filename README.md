@@ -17,6 +17,48 @@ The same design is implemented twice:
 
 Each implementation has its own database. They do not share sessions or balances.
 
+## Build and run
+
+Both programs listen only on this machine. Sign in as Avery Chen (`avery@northwater.demo`) or Jordan Hale (`jordan@northwater.demo`). The password is `northwater`. `PORT` changes the listen port. `NORTHWATER_DB` changes the ledger file. The first start creates that file and loads the demonstration books.
+
+### Java
+
+Use JDK 25, including `javac`, and Maven 3.9 or newer. Point `JAVA_HOME` at that JDK.
+
+From `northwater-java`:
+
+```bash
+mvn -B package
+java --enable-native-access=ALL-UNNAMED -jar target/northwater-1.0.0.jar
+```
+
+`package` compiles the sources, runs the tests, and builds one shaded jar at `target/northwater-1.0.0.jar`. The jar’s main class is `com.northwater.Northwater`. Open http://127.0.0.1:8080.
+
+`--enable-native-access=ALL-UNNAMED` lets the SQLite driver load its native library on JDK 25. The same flag is set for the tests.
+
+`mvn -B verify` runs the package build and then Checkstyle, PMD, and SpotBugs. That is what the Java CI job runs.
+
+### Python
+
+Use Python 3.13 or newer. From `northwater`:
+
+```bash
+python -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python app.py
+```
+
+Open http://127.0.0.1:8000. Lint and tests use the extra tools in `requirements-dev.txt`:
+
+```bash
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/ruff check .
+.venv/bin/ruff format --check .
+.venv/bin/mypy
+.venv/bin/bandit -c pyproject.toml -r app.py test_bank.py
+.venv/bin/python test_bank.py
+```
+
 ## Components
 
 ```mermaid
