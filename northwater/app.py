@@ -1079,7 +1079,7 @@ def post_ledger(conn: sqlite3.Connection, user_id: int, pending: dict) -> tuple[
     except FormError:
         conn.execute("ROLLBACK")
         raise
-    except sqlite3.IntegrityError:
+    except sqlite3.IntegrityError as err:
         conn.execute("ROLLBACK")
         existing = conn.execute(
             "SELECT confirmation FROM transfers WHERE nonce = ?",
