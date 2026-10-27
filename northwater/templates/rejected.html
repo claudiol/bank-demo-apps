@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Unable to continue · Northwater{% endblock %}
+{% block content %}
+{% include "message.html" %}
+<p class="actions"><a class="btn" href="/">Overview</a></p>
+{% endblock %}
+{% block guest %}
+<div class="gate">
+  <div class="panel">
+    {% include "message.html" %}
+    <p class="actions"><a class="btn" href="/">Sign in</a></p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::body})}">
+<head>
+  <title th:fragment="title">Pay a bill · Northwater</title>
+</head>
+<body>
+  <th:block th:fragment="body">
+    <p class="eyebrow">Pay a bill</p>
+    <h1>Debit an account.</h1>
+    <p class="dateline">The payee is a name on your statement. No payment is sent.</p>
+    <p class="alert" role="alert" th:if="${error != null}" th:text="${error}">Error</p>
+    <form class="form-card" method="post" action="/pay" data-once>
+      <input type="hidden" name="csrf" th:value="${csrf}">
+      <div class="field">
+        <label for="from_id">From</label>
+        <select id="from_id" name="from_id" required>
+          <option th:each="account : ${accounts}" th:value="${account.id}" th:selected="${account.id == fromId}" th:text="|${account.nickname} · ${account.mask} · ${account.balance}|">Account</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="payee">Payee</label>
+        <input id="payee" name="payee" list="payees" required maxlength="60" th:value="${payee}">
+        <datalist id="payees">
+          <option th:each="name : ${payeeNames}" th:value="${name}"></option>
+        </datalist>
+      </div>
+      <div class="field">
+        <label for="amount">Amount</label>
+        <input id="amount" name="amount" inputmode="decimal" autocomplete="off" required maxlength="14" placeholder="0.00" th:value="${amount}">
+      </div>
+      <div class="field">
+        <label for="memo">Memo</label>
+        <input id="memo" name="memo" maxlength="80" th:value="${memo}">
+      </div>
+      <button class="btn" type="submit">Review bill</button>
+    </form>
+  </th:block>
+</body>
+</html>

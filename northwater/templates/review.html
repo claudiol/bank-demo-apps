@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Review · Northwater{% endblock %}
+{% block content %}
+<article class="slip">
+  <p class="eyebrow">{{ review.eyebrow }}</p>
+  <h1>{{ review.headline }}</h1>
+  <dl class="facts">
+    {% for label, value in review.lines %}
+    <div>
+      <dt>{{ label }}</dt>
+      <dd>{{ value }}</dd>
+    </div>
+    {% endfor %}
+  </dl>
+  <p class="hint">{{ review.note }}</p>
+  <form method="post" action="/confirm" data-once>
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="nonce" value="{{ review.nonce }}">
+    <div class="actions">
+      <button class="btn" type="submit">{{ review.confirm_label }}</button>
+      <a class="btn btn-secondary" href="{{ review.edit_href }}">Edit details</a>
+    </div>
+  </form>
+</article>
+{% endblock %}

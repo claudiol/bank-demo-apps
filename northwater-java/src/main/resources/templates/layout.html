@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:fragment="page(title, body)">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Northwater is a fictional demonstration bank that runs on your computer.">
+  <meta name="robots" content="noindex">
+  <title th:replace="${title}">Northwater</title>
+  <link rel="icon" href="/favicon.ico" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/fonts.css">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to content</a>
+  <div class="shell" th:if="${user != null}">
+    <aside class="nav">
+      <a class="brand" href="/">
+        <span class="brand-mark">Northwater</span>
+        <span class="brand-note">Demonstration bank</span>
+      </a>
+      <nav class="nav-links" aria-label="Accounts">
+        <a href="/" th:attr="aria-current=${active == 'overview' ? 'page' : null}">Overview</a>
+        <a href="/transfer" th:attr="aria-current=${active == 'transfer' ? 'page' : null}">Move money</a>
+        <a href="/pay" th:attr="aria-current=${active == 'pay' ? 'page' : null}">Pay a bill</a>
+      </nav>
+      <div class="nav-foot">
+        <p class="who" th:text="${user.fullName}">Customer</p>
+        <p class="where" th:text="|${user.city} · since ${user.memberSince}|">City</p>
+        <form method="post" action="/logout" data-once>
+          <input type="hidden" name="csrf" th:value="${csrf}">
+          <button class="btn-quiet" type="submit">Sign out</button>
+        </form>
+      </div>
+    </aside>
+    <main class="main" id="content" tabindex="-1">
+      <div class="wrap">
+        <p th:if="${flash != null}" th:class="${flash.kind == 'error' ? 'flash flash-error' : 'flash flash-ok'}" th:attr="role=${flash.kind == 'error' ? 'alert' : 'status'}" th:text="${flash.text}">Notice</p>
+        <th:block th:replace="${body}"></th:block>
+        <p class="colophon">Northwater is a fictional demonstration. Money here isn't real, isn't insured, and never leaves this computer.</p>
+      </div>
+    </main>
+  </div>
+  <div class="guest-shell" id="content" tabindex="-1" th:unless="${user != null}">
+    <p th:if="${flash != null}" th:class="${flash.kind == 'error' ? 'flash flash-error' : 'flash flash-ok'}" th:attr="role=${flash.kind == 'error' ? 'alert' : 'status'}" th:text="${flash.text}">Notice</p>
+    <th:block th:replace="${body}"></th:block>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
