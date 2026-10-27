@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ receipt.confirmation }} · Northwater{% endblock %}
+{% block content %}
+<article class="slip">
+  <p class="eyebrow">Posted</p>
+  <h1>{{ receipt.headline }}</h1>
+  <p class="confirmation">{{ receipt.confirmation }}</p>
+  <dl class="facts">
+    {% for label, value in receipt.lines %}
+    <div>
+      <dt>{{ label }}</dt>
+      <dd>{{ value }}</dd>
+    </div>
+    {% endfor %}
+  </dl>
+  <div class="actions">
+    <a class="btn" href="/">Done</a>
+    <a class="btn btn-secondary" href="/accounts/{{ receipt.from_id }}">View account</a>
+  </div>
+</article>
+{% endblock %}

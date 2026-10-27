@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::body})}">
+<head>
+  <title th:fragment="title">Sign in · Northwater</title>
+</head>
+<body>
+  <th:block th:fragment="body">
+    <div class="login">
+      <section class="login-brand">
+        <div>
+          <p class="brand-mark">Northwater</p>
+          <span class="rule" aria-hidden="true"></span>
+          <h1>A small bank, running entirely on this computer.</h1>
+        </div>
+        <p>Two customers, checking and savings, and a few months of ordinary transactions. Transfers post only inside this demonstration.</p>
+      </section>
+      <section class="login-panel">
+        <div class="login-card">
+          <h2>Sign in</h2>
+          <p class="alert" role="alert" th:if="${error != null}" th:text="${error}">Error</p>
+          <form method="post" action="/login" data-once>
+            <input type="hidden" name="csrf" th:value="${csrf}">
+            <div class="field">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required th:value="${email}">
+            </div>
+            <div class="field">
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <button class="btn" type="submit">Sign in</button>
+          </form>
+          <p class="or">Or step in as a customer</p>
+          <div class="stack">
+            <form method="post" action="/login" class="demo-form" data-once th:each="person : ${demoPeople}">
+              <input type="hidden" name="csrf" th:value="${csrf}">
+              <input type="hidden" name="email" th:value="${person.email}">
+              <input type="hidden" name="password" th:value="${demoPassword}">
+              <button class="btn btn-secondary" type="submit" th:text="|Continue as ${person.fullName}|">Continue</button>
+            </form>
+          </div>
+          <p class="hint">Password for both: <strong th:text="${demoPassword}">northwater</strong></p>
+        </div>
+      </section>
+    </div>
+  </th:block>
+</body>
+</html>

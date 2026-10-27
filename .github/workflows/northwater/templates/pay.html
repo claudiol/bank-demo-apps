@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Pay a bill · Northwater{% endblock %}
+{% block content %}
+<p class="eyebrow">Pay a bill</p>
+<h1>Debit an account.</h1>
+<p class="dateline">The payee is a name on your statement. No payment is sent.</p>
+{% if error %}
+<p class="alert" role="alert">{{ error }}</p>
+{% endif %}
+<form class="form-card" method="post" action="/pay" data-once>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="field">
+    <label for="from_id">From</label>
+    <select id="from_id" name="from_id" required>
+      {% for account in accounts %}
+      <option value="{{ account.id }}" {% if account.id == from_id %}selected{% endif %}>{{ account.nickname }} · {{ account.mask }} · {{ account.balance }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="payee">Payee</label>
+    <input id="payee" name="payee" list="payees" required maxlength="60" value="{{ payee }}">
+    <datalist id="payees">
+      {% for name in payee_names %}
+      <option value="{{ name }}"></option>
+      {% endfor %}
+    </datalist>
+  </div>
+  <div class="field">
+    <label for="amount">Amount</label>
+    <input id="amount" name="amount" inputmode="decimal" autocomplete="off" required maxlength="14" placeholder="0.00" value="{{ amount }}">
+  </div>
+  <div class="field">
+    <label for="memo">Memo</label>
+    <input id="memo" name="memo" maxlength="80" value="{{ memo }}">
+  </div>
+  <button class="btn" type="submit">Review bill</button>
+</form>
+{% endblock %}

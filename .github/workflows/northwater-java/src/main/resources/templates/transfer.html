@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::body})}">
+<head>
+  <title th:fragment="title">Move money · Northwater</title>
+</head>
+<body>
+  <th:block th:fragment="body">
+    <p class="eyebrow">Move money</p>
+    <h1>Send it somewhere.</h1>
+    <p class="dateline">Between your accounts, or to the other Northwater customer.</p>
+    <p class="alert" role="alert" th:if="${error != null}" th:text="${error}">Error</p>
+    <form class="form-card" method="post" action="/transfer" data-once>
+      <input type="hidden" name="csrf" th:value="${csrf}">
+      <div class="field">
+        <label for="from_id">From</label>
+        <select id="from_id" name="from_id" required>
+          <option th:each="account : ${accounts}" th:value="${account.id}" th:selected="${account.id == fromId}" th:text="|${account.nickname} · ${account.mask} · ${account.balance}|">Account</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="destination">To</label>
+        <select id="destination" name="destination" data-destination required>
+          <option th:each="account : ${accounts}" th:value="|account:${account.id}|" th:selected="${destination == 'account:' + account.id}" th:text="|${account.nickname} · ${account.mask}|">Account</option>
+          <option value="external" th:selected="${destination == 'external'}">Another Northwater customer</option>
+        </select>
+      </div>
+      <div class="field" data-external>
+        <label for="account_number">Their account number</label>
+        <input id="account_number" name="account_number" inputmode="numeric" autocomplete="off" maxlength="20" th:value="${accountNumber}">
+        <p class="hint">Northwater account numbers are 10 digits. Jordan Hale's checking account is 5501925510.</p>
+      </div>
+      <div class="field">
+        <label for="amount">Amount</label>
+        <input id="amount" name="amount" inputmode="decimal" autocomplete="off" required maxlength="14" th:value="${amount}">
+        <p class="hint">For example, 25.00.</p>
+      </div>
+      <div class="field">
+        <label for="memo">Memo</label>
+        <input id="memo" name="memo" maxlength="80" th:value="${memo}">
+        <p class="hint">Optional. Shown on both statements.</p>
+      </div>
+      <button class="btn" type="submit">Review transfer</button>
+    </form>
+  </th:block>
+</body>
+</html>

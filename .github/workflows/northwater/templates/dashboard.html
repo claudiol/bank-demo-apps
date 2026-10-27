@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Overview · Northwater{% endblock %}
+{% block content %}
+<p class="eyebrow">Overview</p>
+<h1>{{ greeting }}, {{ user.first_name }}</h1>
+<p class="dateline">{{ today_long }}</p>
+<p class="balance-label" id="available-label">Available</p>
+<p class="figure" id="available-total" data-cents="{{ total_cents }}" aria-labelledby="available-label"><span class="currency">$</span>{{ total_dollars }}<span class="cents">.{{ cents_part }}</span></p>
+<p class="sub">{{ summary }}</p>
+<div class="actions">
+  <a class="btn" href="/transfer">Move money</a>
+  <a class="btn btn-secondary" href="/pay">Pay a bill</a>
+</div>
+
+<section class="section">
+  <h2>Accounts</h2>
+  <div class="account-list">
+    {% for account in accounts %}
+    <a class="account-row" href="/accounts/{{ account.id }}">
+      <span class="name">{{ account.nickname }}</span>
+      <span class="meta">{{ account.kind_label }} · {{ account.mask }}</span>
+      <span class="balance">{{ account.balance }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="section">
+  <h2>Recent activity</h2>
+  {% if transactions %}
+  {% include "ledger.html" %}
+  {% else %}
+  <p class="empty">No activity yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

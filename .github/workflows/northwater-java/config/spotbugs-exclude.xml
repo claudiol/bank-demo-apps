@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+  <!-- The demonstration password is published in the sign-in page. -->
+  <Match>
+    <Class name="com.northwater.SeedData"/>
+    <Field name="DEMO_PASSWORD"/>
+    <Bug pattern="HARD_CODE_PASSWORD"/>
+  </Match>
+  <Match>
+    <Class name="com.northwater.Ledger"/>
+    <Method name="hashPassword"/>
+    <Bug pattern="HARD_CODE_PASSWORD"/>
+  </Match>
+  <!-- Records return their list components. The seed lists are not shared afterward. -->
+  <Match>
+    <Class name="~com\.northwater\.SeedData\$.*"/>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+  <!-- Thymeleaf reads these public fields. SpotBugs only sees the Java writes. -->
+  <Match>
+    <Class name="~com\.northwater\.Views\$.*"/>
+    <Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
+  </Match>
+</FindBugsFilter>

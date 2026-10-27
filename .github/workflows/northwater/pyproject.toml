@@ -1,0 +1,18 @@
+[tool.ruff]
+line-length = 130
+src = ["."]
+extend-exclude = [".venv", "data"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["app.py", "test_bank.py"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+check_untyped_defs = true
+
+[tool.bandit]
+exclude_dirs = [".venv", "data"]
