@@ -453,6 +453,7 @@ def assert_ledger(conn: sqlite3.Connection) -> None:
         if running != account["balance_cents"]:
             raise RuntimeError(f"{account['nickname']} balance {account['balance_cents']} does not match the ledger {running}")
 
+
 def seed(conn: sqlite3.Connection) -> None:
     customers = build_customers()
     password_hash = hash_password(DEMO_PASSWORD)
