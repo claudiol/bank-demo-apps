@@ -22,12 +22,28 @@ jobs:
           cache-dependency-path: |
             northwater/requirements.txt
             northwater/requirements-dev.txt
-      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: pip install -r requirements.txt
+      - run: mkdir -p reports && pip freeze > reports/requirements.lock
+      - run: pip install -r requirements-dev.txt "cyclonedx-bom==7.5.0"
+      - run: cyclonedx-py requirements reports/requirements.lock --output-file reports/sbom.cdx.json --output-reproducible
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy
       - run: bandit -c pyproject.toml -r app.py test_bank.py
       - run: python test_bank.py
+      - name: Grype report
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL https://github.com/anchore/grype/releases/download/v0.121.0/grype_0.121.0_linux_amd64.tar.gz | tar -xz -C "$HOME/.local/bin" grype
+          "$HOME/.local/bin/grype" "sbom:reports/sbom.cdx.json" -o table
+          "$HOME/.local/bin/grype" "sbom:reports/sbom.cdx.json" -o json --file reports/grype.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-supply-chain
+          path: |
+            northwater/reports/sbom.cdx.json
+            northwater/reports/grype.json
+          if-no-files-found: error
 
   java:
     runs-on: ubuntu-latest
@@ -43,3 +59,16 @@ jobs:
           cache: maven
           cache-dependency-path: northwater-java/pom.xml
       - run: mvn -B verify
+      - name: Grype report
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL https://github.com/anchore/grype/releases/download/v0.121.0/grype_0.121.0_linux_amd64.tar.gz | tar -xz -C "$HOME/.local/bin" grype
+          "$HOME/.local/bin/grype" "sbom:target/bom.json" -o table
+          "$HOME/.local/bin/grype" "sbom:target/bom.json" -o json --file target/grype.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: java-supply-chain
+          path: |
+            northwater-java/target/bom.json
+            northwater-java/target/grype.json
+          if-no-files-found: error

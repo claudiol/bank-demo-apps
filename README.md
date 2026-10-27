@@ -36,7 +36,14 @@ java --enable-native-access=ALL-UNNAMED -jar target/northwater-1.0.0.jar
 
 `--enable-native-access=ALL-UNNAMED` lets the SQLite driver load its native library on JDK 25. The same flag is set for the tests.
 
-`mvn -B verify` runs the package build and then Checkstyle, PMD, and SpotBugs. That is what the Java CI job runs.
+`mvn -B verify` runs the package build and then Checkstyle, PMD, and SpotBugs. That is what the Java CI job runs. `package` also writes a CycloneDX SBOM to `target/bom.json`.
+
+The CI job scans that SBOM with Grype 0.121.0 and uploads `target/bom.json` and `target/grype.json`. Grype records vulnerabilities; it does not fail the build. To scan locally after the package build:
+
+```bash
+grype sbom:target/bom.json -o table
+grype sbom:target/bom.json -o json --file target/grype.json
+```
 
 ### Python
 
@@ -57,6 +64,17 @@ Open http://127.0.0.1:8000. Lint and tests use the extra tools in `requirements-
 .venv/bin/mypy
 .venv/bin/bandit -c pyproject.toml -r app.py test_bank.py
 .venv/bin/python test_bank.py
+```
+
+The CI job writes a CycloneDX SBOM of the installed runtime requirements to `reports/sbom.cdx.json`, scans it with Grype, and uploads that SBOM with `reports/grype.json`. To do the same locally, after installing `requirements.txt`:
+
+```bash
+mkdir -p reports
+.venv/bin/pip freeze > reports/requirements.lock
+.venv/bin/pip install "cyclonedx-bom==7.5.0"
+.venv/bin/cyclonedx-py requirements reports/requirements.lock --output-file reports/sbom.cdx.json --output-reproducible
+grype sbom:reports/sbom.cdx.json -o table
+grype sbom:reports/sbom.cdx.json -o json --file reports/grype.json
 ```
 
 ## Components
