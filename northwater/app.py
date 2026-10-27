@@ -594,7 +594,7 @@ def tx_view(row: sqlite3.Row, today: date) -> dict:
         "balance": format_money(row["balance_after_cents"]),
         "account_id": row["account_id"],
     }
-    if "nickname" in row.keys():
+    if "nickname" in row:
         view["account"] = f"{row['nickname']} · {mask_number(row['account_number'])}"
     return view
 
@@ -1087,7 +1087,7 @@ def post_ledger(conn: sqlite3.Connection, user_id: int, pending: dict) -> tuple[
         ).fetchone()
         if existing:
             return existing["confirmation"], "This transfer was already posted.", True
-        raise FormError("Couldn't post that transfer. Review it again.")
+        raise FormError("Couldn't post that transfer. Review it again.") from err
     except Exception:
         conn.execute("ROLLBACK")
         raise
