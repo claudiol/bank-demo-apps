@@ -153,6 +153,56 @@ Javalin 7 registers routes on `config.routes`, reads the banner flag from `confi
 
 After `mvn -B package`, run the same Grype command locally. It exits 0. One medium finding can remain: OGNL 3.3.4 ([GHSA-crwc-vw2r-qr6m](https://github.com/advisories/GHSA-crwc-vw2r-qr6m), fixed in 3.4.13), which Thymeleaf 3.1.5 still brings in. The Java gate fails on high and critical, so that medium finding leaves the job green. With `java` and `python` both green, the ruleset allows the merge.
 
+### Make the Java job fail again
+
+Do this on a branch. `main` rejects a direct push. One version in `northwater-java/pom.xml` is enough to fail the Grype step. Leave Javalin at `7.2.4` so the sources still compile, the jar still serves the sign-in page, and the job reaches Grype.
+
+In the Thymeleaf dependency, replace `3.1.5.RELEASE`:
+
+```xml
+    <dependency>
+      <groupId>org.thymeleaf</groupId>
+      <artifactId>thymeleaf</artifactId>
+      <version>3.1.5.RELEASE</version>
+    </dependency>
+```
+
+with `3.1.3.RELEASE`:
+
+```xml
+    <dependency>
+      <groupId>org.thymeleaf</groupId>
+      <artifactId>thymeleaf</artifactId>
+      <version>3.1.3.RELEASE</version>
+    </dependency>
+```
+
+Commit that file and push the branch. Open a pull request, or push to the branch that already has one. The Java job runs `mvn -B verify`, serves the sign-in page, then the Grype step exits 2 on the three critical Thymeleaf advisories in the table above. The `java-supply-chain` artifact still uploads. The `java` check stays red, so the ruleset keeps the pull request unmerged.
+
+To bring the Jetty high findings back as well, change the Javalin dependency in the same file from `7.2.4`:
+
+```xml
+    <dependency>
+      <groupId>io.javalin</groupId>
+      <artifactId>javalin</artifactId>
+      <version>7.2.4</version>
+    </dependency>
+```
+
+to `6.7.0`:
+
+```xml
+    <dependency>
+      <groupId>io.javalin</groupId>
+      <artifactId>javalin</artifactId>
+      <version>6.7.0</version>
+    </dependency>
+```
+
+Javalin `6.7.0` pulls Jetty 11.0.25, which is the pair of high findings in the table. `BankApp` is written for Javalin 7, so this second edit also needs the Javalin 6 route registration or `mvn verify` fails at compile time and Grype does not run. The original red run, [Actions run 40764518160](https://github.com/claudiol/bank-demo-apps/actions/runs/40764518160), had both versions at once: Thymeleaf `3.1.3.RELEASE` and Javalin `6.7.0`.
+
+Put the two versions back to `3.1.5.RELEASE` and `7.2.4` to make the Grype step pass again.
+
 ## Components
 
 ```mermaid
