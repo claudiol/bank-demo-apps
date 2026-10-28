@@ -38,7 +38,7 @@ java --enable-native-access=ALL-UNNAMED -jar target/northwater-1.0.0.jar
 
 `mvn -B verify` runs the package build and then Checkstyle, PMD, and SpotBugs. That is what the Java CI job runs. `package` also writes a CycloneDX SBOM to `target/bom.json`.
 
-The CI job scans that SBOM with Grype 0.121.0 and uploads `target/bom.json` and `target/grype.json`. Grype records vulnerabilities; it does not fail the build. To scan locally after the package build:
+The CI job starts that jar and requests the sign-in page. It then scans the SBOM with Grype 0.121.0 and uploads `target/bom.json` and `target/grype.json`. A high or critical finding fails the Java job. To scan locally after the package build:
 
 ```bash
 grype sbom:target/bom.json -o table
@@ -75,6 +75,49 @@ mkdir -p reports
 .venv/bin/cyclonedx-py requirements reports/requirements.lock --output-file reports/sbom.cdx.json --output-reproducible
 grype sbom:reports/sbom.cdx.json -o table
 grype sbom:reports/sbom.cdx.json -o json --file reports/grype.json
+```
+
+## Continuous integration
+
+A push or a pull request starts the Python, Java, and secret-scanning jobs together. A newer push to the same branch cancels the run already in progress. Pull requests also get a dependency review. The Python Grype scan uploads its report and does not fail the job. The Java scan fails the job when it finds a high or critical issue.
+
+Renovate runs every Monday and opens one pull request for the Java dependency updates. Run it sooner from the Actions tab with **Renovate**. Pull requests opened by that workflow use the repository token, so the CI workflow does not start on them by itself. The Renovate GitHub App avoids that limit.
+
+```mermaid
+flowchart TB
+  trigger["Push or pull request"] --> python
+  trigger --> java
+  trigger --> secrets
+  pr["Pull request"] --> review
+
+  subgraph python [Python]
+    direction TB
+    p1["Checkout and Python 3.13"] --> p2["Install requirements.txt"]
+    p2 --> p3["Freeze requirements.lock"]
+    p3 --> p4["Install dev tools and CycloneDX"]
+    p4 --> p5["Write reports/sbom.cdx.json"]
+    p5 --> p6["Ruff, mypy, and Bandit"]
+    p6 --> p7["python test_bank.py"]
+    p7 --> p8["Grype report"]
+    p8 --> p9["Artifact python-supply-chain"]
+  end
+
+  subgraph java [Java]
+    direction TB
+    j1["Checkout and Temurin JDK 25"] --> j2["mvn verify"]
+    j2 --> j3["Tests, shaded jar, Checkstyle, PMD, SpotBugs, and target/bom.json"]
+    j3 --> j4["Jar serves the sign-in page"]
+    j4 --> j5["Grype report, fail on high or critical"]
+    j5 --> j6["Artifact java-supply-chain"]
+  end
+
+  subgraph secrets [Secrets]
+    s1["Gitleaks on the git history"]
+  end
+
+  subgraph review [Dependency review]
+    r1["Vulnerable dependency changes fail the check"]
+  end
 ```
 
 ## Components
