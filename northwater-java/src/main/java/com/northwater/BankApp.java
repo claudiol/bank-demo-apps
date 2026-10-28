@@ -15,8 +15,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import org.eclipse.jetty.ee10.servlet.SessionHandler;
 import org.eclipse.jetty.http.HttpCookie;
-import org.eclipse.jetty.server.session.SessionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,54 +66,54 @@ public final class BankApp {
     }
 
     private Javalin javalin() {
-        Javalin app = Javalin.create(config -> {
-            config.showJavalinBanner = false;
+        return Javalin.create(config -> {
+            config.startup.showJavalinBanner = false;
             config.staticFiles.add(staticFiles -> {
                 staticFiles.hostedPath = "/static";
                 staticFiles.directory = "/static";
                 staticFiles.location = Location.CLASSPATH;
             });
             config.jetty.modifyServletContextHandler(handler -> handler.setSessionHandler(sessions()));
+            var routes = config.routes;
+            routes.before(ctx -> ctx.header("X-Content-Type-Options", "nosniff"));
+            routes.after(ctx -> {
+                ctx.header("X-Frame-Options", "DENY");
+                ctx.header("Referrer-Policy", "same-origin");
+                ctx.header("Cross-Origin-Opener-Policy", "same-origin");
+                ctx.header("X-Permitted-Cross-Domain-Policies", "none");
+                ctx.header("Content-Security-Policy", CSP);
+                String type = ctx.res().getContentType();
+                if (type != null && type.startsWith("text/html")) {
+                    ctx.header("Cache-Control", "no-store");
+                }
+            });
+            routes.get("/favicon.ico", this::favicon);
+            routes.get("/", this::home);
+            routes.post("/login", this::login);
+            routes.post("/logout", this::logout);
+            routes.get("/accounts/{accountId}", this::account);
+            routes.get("/transfer", this::transferForm);
+            routes.post("/transfer", this::transferSubmit);
+            routes.get("/pay", this::payForm);
+            routes.post("/pay", this::paySubmit);
+            routes.get("/review", this::review);
+            routes.post("/confirm", this::confirm);
+            routes.get("/receipts/{confirmation}", this::receipt);
+            routes.error(404, ctx -> {
+                if (Boolean.TRUE.equals(ctx.attribute("northwater.handled"))) {
+                    return;
+                }
+                missing(ctx, "That page isn't on the books.", "The link may be old, or the page isn't part of this demo.");
+            });
+            routes.exception(Exception.class, (exception, ctx) -> {
+                log.warn("request failed", exception);
+                if (!ctx.res().isCommitted()) {
+                    ctx.status(500);
+                    ctx.contentType("text/plain; charset=UTF-8");
+                    ctx.result("Something went wrong.");
+                }
+            });
         });
-        app.before(ctx -> ctx.header("X-Content-Type-Options", "nosniff"));
-        app.after(ctx -> {
-            ctx.header("X-Frame-Options", "DENY");
-            ctx.header("Referrer-Policy", "same-origin");
-            ctx.header("Cross-Origin-Opener-Policy", "same-origin");
-            ctx.header("X-Permitted-Cross-Domain-Policies", "none");
-            ctx.header("Content-Security-Policy", CSP);
-            String type = ctx.res().getContentType();
-            if (type != null && type.startsWith("text/html")) {
-                ctx.header("Cache-Control", "no-store");
-            }
-        });
-        app.get("/favicon.ico", this::favicon);
-        app.get("/", this::home);
-        app.post("/login", this::login);
-        app.post("/logout", this::logout);
-        app.get("/accounts/{accountId}", this::account);
-        app.get("/transfer", this::transferForm);
-        app.post("/transfer", this::transferSubmit);
-        app.get("/pay", this::payForm);
-        app.post("/pay", this::paySubmit);
-        app.get("/review", this::review);
-        app.post("/confirm", this::confirm);
-        app.get("/receipts/{confirmation}", this::receipt);
-        app.error(404, ctx -> {
-            if (Boolean.TRUE.equals(ctx.attribute("northwater.handled"))) {
-                return;
-            }
-            missing(ctx, "That page isn't on the books.", "The link may be old, or the page isn't part of this demo.");
-        });
-        app.exception(Exception.class, (exception, ctx) -> {
-            log.warn("request failed", exception);
-            if (!ctx.res().isCommitted()) {
-                ctx.status(500);
-                ctx.contentType("text/plain; charset=UTF-8");
-                ctx.result("Something went wrong.");
-            }
-        });
-        return app;
     }
 
     private static SessionHandler sessions() {

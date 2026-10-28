@@ -120,6 +120,39 @@ flowchart TB
   end
 ```
 
+## Demo: the Java Grype report blocks the merge
+
+This is the walkthrough for a red Java job.
+
+`main` requires the `java` status check. That job writes `northwater-java/target/bom.json` and scans it with Grype 0.121.0. The failing command is:
+
+```bash
+grype sbom:target/bom.json --fail-on high -o json --file target/grype.json
+```
+
+A high or critical finding makes Grype exit 2. The Java job fails, and the branch ruleset keeps the pull request unmerged. Grype still writes the JSON before it exits, and the job uploads it as the `java-supply-chain` artifact at `northwater-java/target/grype.json`. The same file is the place to look when the log table has scrolled away. The Python scan uploads its report and leaves the Python job green.
+
+The pull request that added this gate failed it on the first run: [Actions run 40764518160](https://github.com/claudiol/bank-demo-apps/actions/runs/40764518160). Open the **Grype report** step on the Java job. The table listed these high and critical issues:
+
+| Severity | Component | Version | Brought in by | Advisory | Fixed in |
+| --- | --- | --- | --- | --- | --- |
+| Critical | thymeleaf | 3.1.3.RELEASE | direct dependency | [GHSA-xjw8-8c5c-9r79](https://github.com/advisories/GHSA-xjw8-8c5c-9r79) | 3.1.4.RELEASE |
+| Critical | thymeleaf | 3.1.3.RELEASE | direct dependency | [GHSA-r4v4-5mwr-2fwr](https://github.com/advisories/GHSA-r4v4-5mwr-2fwr) | 3.1.4.RELEASE |
+| Critical | thymeleaf | 3.1.3.RELEASE | direct dependency | [GHSA-c9ph-gxww-7744](https://github.com/advisories/GHSA-c9ph-gxww-7744) | 3.1.5.RELEASE |
+| High | jetty-http | 11.0.25 | Javalin 6.7.0 | [GHSA-355h-qmc2-wpwf](https://github.com/advisories/GHSA-355h-qmc2-wpwf) | 11.0.29 |
+| High | jetty-security | 11.0.25 | Javalin 6.7.0 | [GHSA-2fvj-hgj9-j2gr](https://github.com/advisories/GHSA-2fvj-hgj9-j2gr) | 11.0.31 |
+
+Jetty is not a direct dependency. Javalin 6.7.0 brings Jetty 11.0.25. The 11.0.29 and 11.0.31 releases named in those advisories are not on Maven Central. The newest Jetty 11 artifacts published there are 11.0.26, and Grype still reports that line as affected. A Jetty 11 pin in the POM leaves the high findings in place.
+
+The fix is the version change in `northwater-java/pom.xml`:
+
+- Thymeleaf moves from `3.1.3.RELEASE` to `3.1.5.RELEASE`. That clears the three critical findings on the direct dependency.
+- Javalin moves from `6.7.0` to `7.2.4`. Javalin 7 depends on Jetty 12.1.14, which replaces the Jetty 11.0.25 artifacts.
+
+Javalin 7 registers routes on `config.routes`, reads the banner flag from `config.startup.showJavalinBanner`, and uses `org.eclipse.jetty.ee10.servlet.SessionHandler`. `BankApp` follows that API. The session cookie stays `northwater`, HttpOnly, and SameSite Lax.
+
+After `mvn -B package`, run the same Grype command locally. It exits 0. One medium finding can remain: OGNL 3.3.4 ([GHSA-crwc-vw2r-qr6m](https://github.com/advisories/GHSA-crwc-vw2r-qr6m), fixed in 3.4.13), which Thymeleaf 3.1.5 still brings in. The Java gate fails on high and critical, so that medium finding leaves the job green. With `java` and `python` both green, the ruleset allows the merge.
+
 ## Components
 
 ```mermaid
