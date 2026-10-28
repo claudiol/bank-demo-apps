@@ -77,6 +77,36 @@ grype sbom:reports/sbom.cdx.json -o table
 grype sbom:reports/sbom.cdx.json -o json --file reports/grype.json
 ```
 
+## Continuous integration
+
+A push or a pull request starts two jobs. They run side by side. Each job prints a Grype table in the log and uploads the SBOM plus `grype.json`. Grype does not fail the job.
+
+```mermaid
+flowchart TB
+  trigger["Push or pull request"] --> python
+  trigger --> java
+
+  subgraph python [Python]
+    direction TB
+    p1["Checkout and Python 3.13"] --> p2["Install requirements.txt"]
+    p2 --> p3["Freeze requirements.lock"]
+    p3 --> p4["Install dev tools and CycloneDX"]
+    p4 --> p5["Write reports/sbom.cdx.json"]
+    p5 --> p6["Ruff, mypy, and Bandit"]
+    p6 --> p7["python test_bank.py"]
+    p7 --> p8["Grype report"]
+    p8 --> p9["Artifact python-supply-chain"]
+  end
+
+  subgraph java [Java]
+    direction TB
+    j1["Checkout and Temurin JDK 25"] --> j2["mvn verify"]
+    j2 --> j3["Tests, shaded jar, Checkstyle, PMD, SpotBugs, and target/bom.json"]
+    j3 --> j4["Grype report"]
+    j4 --> j5["Artifact java-supply-chain"]
+  end
+```
+
 ## Components
 
 ```mermaid
