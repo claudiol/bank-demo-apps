@@ -38,7 +38,7 @@ java --enable-native-access=ALL-UNNAMED -jar target/northwater-1.0.0.jar
 
 `mvn -B verify` runs the package build and then Checkstyle, PMD, and SpotBugs. That is what the Java CI job runs. `package` also writes a CycloneDX SBOM to `target/bom.json`.
 
-The CI job scans that SBOM with Grype 0.121.0 and uploads `target/bom.json` and `target/grype.json`. Grype records vulnerabilities; it does not fail the build. To scan locally after the package build:
+The CI job starts that jar and requests the sign-in page. It then scans the SBOM with Grype 0.121.0 and uploads `target/bom.json` and `target/grype.json`. A high or critical finding fails the Java job. To scan locally after the package build:
 
 ```bash
 grype sbom:target/bom.json -o table
@@ -79,12 +79,16 @@ grype sbom:reports/sbom.cdx.json -o json --file reports/grype.json
 
 ## Continuous integration
 
-A push or a pull request starts two jobs. They run side by side. Each job prints a Grype table in the log and uploads the SBOM plus `grype.json`. Grype does not fail the job.
+A push or a pull request starts the Python, Java, and secret-scanning jobs together. A newer push to the same branch cancels the run already in progress. Pull requests also get a dependency review. The Python Grype scan uploads its report and does not fail the job. The Java scan fails the job when it finds a high or critical issue.
+
+Renovate runs every Monday and opens one pull request for the Java dependency updates. Run it sooner from the Actions tab with **Renovate**. Pull requests opened by that workflow use the repository token, so the CI workflow does not start on them by itself. The Renovate GitHub App avoids that limit.
 
 ```mermaid
 flowchart TB
   trigger["Push or pull request"] --> python
   trigger --> java
+  trigger --> secrets
+  pr["Pull request"] --> review
 
   subgraph python [Python]
     direction TB
@@ -102,10 +106,52 @@ flowchart TB
     direction TB
     j1["Checkout and Temurin JDK 25"] --> j2["mvn verify"]
     j2 --> j3["Tests, shaded jar, Checkstyle, PMD, SpotBugs, and target/bom.json"]
-    j3 --> j4["Grype report"]
-    j4 --> j5["Artifact java-supply-chain"]
+    j3 --> j4["Jar serves the sign-in page"]
+    j4 --> j5["Grype report, fail on high or critical"]
+    j5 --> j6["Artifact java-supply-chain"]
+  end
+
+  subgraph secrets [Secrets]
+    s1["Gitleaks on the git history"]
+  end
+
+  subgraph review [Dependency review]
+    r1["Vulnerable dependency changes fail the check"]
   end
 ```
+
+## Demo: the Java Grype report blocks the merge
+
+This is the walkthrough for a red Java job.
+
+`main` requires the `java` status check. That job writes `northwater-java/target/bom.json` and scans it with Grype 0.121.0. The failing command is:
+
+```bash
+grype sbom:target/bom.json --fail-on high -o json --file target/grype.json
+```
+
+A high or critical finding makes Grype exit 2. The Java job fails, and the branch ruleset keeps the pull request unmerged. Grype still writes the JSON before it exits, and the job uploads it as the `java-supply-chain` artifact at `northwater-java/target/grype.json`. The same file is the place to look when the log table has scrolled away. The Python scan uploads its report and leaves the Python job green.
+
+The pull request that added this gate failed it on the first run: [Actions run 40764518160](https://github.com/claudiol/bank-demo-apps/actions/runs/40764518160). Open the **Grype report** step on the Java job. The table listed these high and critical issues:
+
+| Severity | Component | Version | Brought in by | Advisory | Fixed in |
+| --- | --- | --- | --- | --- | --- |
+| Critical | thymeleaf | 3.1.3.RELEASE | direct dependency | [GHSA-xjw8-8c5c-9r79](https://github.com/advisories/GHSA-xjw8-8c5c-9r79) | 3.1.4.RELEASE |
+| Critical | thymeleaf | 3.1.3.RELEASE | direct dependency | [GHSA-r4v4-5mwr-2fwr](https://github.com/advisories/GHSA-r4v4-5mwr-2fwr) | 3.1.4.RELEASE |
+| Critical | thymeleaf | 3.1.3.RELEASE | direct dependency | [GHSA-c9ph-gxww-7744](https://github.com/advisories/GHSA-c9ph-gxww-7744) | 3.1.5.RELEASE |
+| High | jetty-http | 11.0.25 | Javalin 6.7.0 | [GHSA-355h-qmc2-wpwf](https://github.com/advisories/GHSA-355h-qmc2-wpwf) | 11.0.29 |
+| High | jetty-security | 11.0.25 | Javalin 6.7.0 | [GHSA-2fvj-hgj9-j2gr](https://github.com/advisories/GHSA-2fvj-hgj9-j2gr) | 11.0.31 |
+
+Jetty is not a direct dependency. Javalin 6.7.0 brings Jetty 11.0.25. The 11.0.29 and 11.0.31 releases named in those advisories are not on Maven Central. The newest Jetty 11 artifacts published there are 11.0.26, and Grype still reports that line as affected. A Jetty 11 pin in the POM leaves the high findings in place.
+
+The fix is the version change in `northwater-java/pom.xml`:
+
+- Thymeleaf moves from `3.1.3.RELEASE` to `3.1.5.RELEASE`. That clears the three critical findings on the direct dependency.
+- Javalin moves from `6.7.0` to `7.2.4`. Javalin 7 depends on Jetty 12.1.14, which replaces the Jetty 11.0.25 artifacts.
+
+Javalin 7 registers routes on `config.routes`, reads the banner flag from `config.startup.showJavalinBanner`, and uses `org.eclipse.jetty.ee10.servlet.SessionHandler`. `BankApp` follows that API. The session cookie stays `northwater`, HttpOnly, and SameSite Lax.
+
+After `mvn -B package`, run the same Grype command locally. It exits 0. One medium finding can remain: OGNL 3.3.4 ([GHSA-crwc-vw2r-qr6m](https://github.com/advisories/GHSA-crwc-vw2r-qr6m), fixed in 3.4.13), which Thymeleaf 3.1.5 still brings in. The Java gate fails on high and critical, so that medium finding leaves the job green. With `java` and `python` both green, the ruleset allows the merge.
 
 ## Components
 
